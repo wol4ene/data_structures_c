@@ -1,44 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include "../inc/slist_ext.h"
+#include "../inc/slist_int.h"
 
-/* Internal Node */
-typedef struct node_s {
-    void* data;
-    struct node_s *next;
-} node_t;
-
-/* Public List */
-typedef struct slist_s {
-    void (*node_print)(void*);
-    node_t *head;
-} slist_t;
-
-/* Public APIs */
-void slist_new(slist_t *slist, void (*slist_node_print)(void*));
-void slist_destroy(slist_t *slist);
-void slist_print(slist_t *slist);
-void slist_append(slist_t *slist, void* data);
-void slist_prepend(slist_t *slist, void* data);
-void slist_delete_first(slist_t *slist);
-void slist_delete_last(slist_t *slist);
-unsigned int slist_count(slist_t *slist);
-
-/**
- * Print a single-linked list
- *
- * @param slist (i) slist to print 
- * @return void
- */
-void slist_print(slist_t *slist) {
-    int i = 0;
-    node_t *cur = slist->head;
-    while (cur != NULL) {
-	printf("slist[%u] = ", i++);
-	slist->node_print(cur->data);
-	cur = cur->next;
-    }
-}
-
+/************************************
+ *    Static Helpers
+ ************************************/
 /**
  * Internal API to alloc and init a node
  *
@@ -65,15 +33,57 @@ void _slist_node_free(node_t *node) {
     free(node);
 }
 
+
+/************************************
+ *    Public APIs
+ ************************************/
+
 /**
- * Append a data chunk to the slist
+ * Prepare a new slist
+ *
+ * Note - allocs mem for a new list, caller must call slist_destroy()
  * 
- * @param slist (i) slist to append to
+ * @param name (i) name for list
+ * @return ListPtr
+ */
+ListPtr slist_new(const char *name) {
+    slist_t *tmp = (slist_t*)malloc(sizeof(slist_t));
+    tmp->head = NULL;
+    strncpy(tmp->name, name, sizeof(tmp->name));
+    return tmp;
+}
+
+/**
+ * Destroy a slist
+ *
+ * @param listp (i) list to destroy
+ */
+void slist_destroy(ListPtr listp)
+{
+    node_t *cur = listp->head;
+    node_t *next = NULL;
+
+    /* walk all nodes in list, destroying each node as we go */
+    while (NULL != cur) {
+	next = cur->next;
+	_slist_node_free(cur);
+	cur = next;
+    }
+
+    /* finally, destroy the slist itself */
+    free(listp);
+    listp = NULL;
+}
+
+/**
+ * Append a node to the slist
+ * 
+ * @param listp (i) list to append to
  * @param data  (i) data to append
  * @return void
  */
-void slist_append(slist_t *slist, void *data) {
-    node_t *cur = slist->head;
+void slist_add_tail(ListPtr listp, void *data) {
+    node_t *cur = listp->head;
     node_t *new = NULL;
 
     /* alloc new node */
@@ -81,10 +91,10 @@ void slist_append(slist_t *slist, void *data) {
 
     /* if list is empty, simply update the head to point to new node */
     if (NULL == cur) {
-	slist->head = new;
+	listp->head = new;
     } else {
 	/* walk to last node and tack on new node */
-	while (cur->next != NULL) {
+	while (NULL != cur->next) {
 	    cur = cur->next;
 	}
 	cur->next = new;
@@ -92,71 +102,31 @@ void slist_append(slist_t *slist, void *data) {
 }
 
 /**
- * Prepend a data chunk to the slist
+ * Prepend a node to the slist
  *
- * @param slist (i) slist to prepend to
+ * @param listp (i) list to prepend to
  * @param data  (i) data to prepend
  * @return void
  */
-void slist_prepend(slist_t *slist, void *data) {
-    node_t *cur = slist->head;
+void slist_add_head(ListPtr listp, void *data) {
+    node_t *cur = listp->head;
     node_t *new = NULL;
 
     /* alloc new node */
     new = _slist_node_alloc(data);
 
     new->next = cur;
-    slist->head = new;
+    listp->head = new;
 }
 
 /**
- * Prepare a new slist
- * 
- * @param slist (i) slist to prepare
- * @param slist_node_print (i) fn-ptr for printing out the data in the slist
- * @return void
- */
-void slist_new(slist_t *slist, void (*slist_node_print)(void*)) {
-    slist->node_print = slist_node_print;
-    slist->head = NULL;
-}
-
-/**
- * Destroy a slist
+ * Delete the last node from a slist
  *
- * @param slist (i) slist to destroy
- */
-void slist_destroy(slist_t *slist)
-{
-    /* TODO */
-}
-
-/**
- * Delete the first element from a slist
- * 
- * @param slist (i) slist to delete first element from
+ * @param listp (i) list to delete last node from
  * @return void
  */
-void slist_delete_first(slist_t *slist) {
-    node_t *cur = slist->head;
-    
-    if (NULL == cur) {
-	printf("Nothing to delete, list empty\n");
-    } else {
-	printf("Delete first node...\n");
-	slist->head = cur->next;
-	_slist_node_free(cur);
-    }
-}
-
-/**
- * Delete the last element from a slist
- *
- * @param slist (i) slist to delete last element from
- * @return void
- */
-void slist_delete_last(slist_t *slist) {
-    node_t *cur = slist->head;
+void slist_del_tail(ListPtr listp) {
+    node_t *cur = listp->head;
 
     if (NULL == cur) {
 	printf("Nothing to delete, list empty\n");
@@ -164,7 +134,7 @@ void slist_delete_last(slist_t *slist) {
     else if (NULL == cur->next) {
 	printf("Only 1 item to delete, the head\n");
 	_slist_node_free(cur);
-	slist->head = NULL;
+	listp->head = NULL;
     } else {
 	node_t *toDelete = cur;
 	node_t *prev = cur;
@@ -173,11 +143,6 @@ void slist_delete_last(slist_t *slist) {
 	    prev = toDelete;
 	    toDelete = toDelete->next;
 	}
-	printf("Found second to last node: ");
-	slist->node_print(prev->data);
-	printf("Will delete last node: ");
-	slist->node_print(toDelete->data);
-
 	_slist_node_free(toDelete);
 	prev->next = NULL;
 
@@ -187,29 +152,112 @@ void slist_delete_last(slist_t *slist) {
 	    cur = cur->next;
 	}
 	printf("Found second to last node: ");
-	slist->node_print(cur->data);
+	listp->node_print(cur->data);
 	printf("Will delete last node: ");
-	slist->node_print(cur->next->data);
+	listp->node_print(cur->next->data);
 
 	/* now sitting at next-to-last node */
 	_slist_node_free(cur->next);
 	cur->next = NULL;
 #endif
-
     }
+}
+
+/**
+ * Delete the first node from a slist
+ * 
+ * @param listp (i) list to delete first node from
+ * @return void
+ */
+void slist_del_head(ListPtr listp) {
+    node_t *cur = listp->head;
+    
+    if (NULL == cur) {
+	printf("Nothing to delete, list empty\n");
+    } else {
+	printf("Delete first node...\n");
+	listp->head = cur->next;
+	_slist_node_free(cur);
+    }
+}
+
+/**
+ * Reverse the list
+ *
+ * @param listp (i) list to reverse
+ * @return void
+ */
+void slist_reverse(ListPtr listp)
+{
+    node_t *prev = NULL;
+    node_t *next = NULL;
+    node_t *cur = listp->head;
+
+    while (cur != NULL) {
+	next = cur->next;   /* save the next node */
+	cur->next = prev;   /* point cur node back to prev */
+	prev = cur;	    /* march prev forward */
+	cur = next;	    /* march cur forward */
+    }
+
+    /* finally, update the list's head pointer */
+    listp->head = prev;
+}
+
+/**
+ * Iterate the list and call apply_fn for each node
+ *
+ * @param listp (i) list to iterate over
+ * @param apply_fn (i) fn-ptr to call for each node
+ * @return void
+ */
+void slist_apply_fn(ListPtr listp, void (*apply_fn)(void *)) {
+    node_t *cur = listp->head;
+
+    /* walk all nodes in list */
+    while (NULL != cur) {
+	apply_fn(cur->data);
+	cur = cur->next;
+    }
+}
+
+/**
+ * Return the data at the 'pos' node, but do not destroy the node 
+ *
+ * Note - uses 0-based index.  So 'pos=0' will return the head of the list.
+ *
+ * @param listp (i) list to get from
+ * @param pos   (i) position from which to get
+ * @return data value or NULL if list doesn't contain 'pos' elements
+ */
+void *slist_get_pos(ListPtr listp, int pos) {
+    void *ret = NULL;
+    int cur_pos = 0;
+    node_t *cur = listp->head;
+
+    while (NULL != cur) {
+	if (cur_pos == pos) {
+	    ret = cur->data;
+	    break;	
+	}
+	cur_pos++;
+	cur = cur->next;
+    }
+    return ret;
 }
 
 /**
  * Return how many nodes are in the list
  * 
- * @param slist (i) slist to count
+ * @param listp (i) list to count
  * @return count of nodes in list
  */
-unsigned int slist_count(slist_t *slist)
+int slist_count(ListPtr listp)
 {
-    unsigned int cnt = 0;
-    node_t *cur = slist->head;
+    int cnt = 0;
+    node_t *cur = listp->head;
 
+    /* walk all nodes in list */
     while (NULL != cur) {
 	cnt++;
 	cur = cur->next;
@@ -218,7 +266,7 @@ unsigned int slist_count(slist_t *slist)
 }
 
 /**
- * Helper API to print an integer
+ * API to print an integer
  *
  * @param data (i) void-ptr to integer to print
  * @return void
@@ -227,21 +275,3 @@ void print_integer(void *data) {
     printf("slist item: %u\n", *(unsigned int*)(data));
 }
 
-int main(int argc, char *argv[])
-{
-    int x = 5, y = 7, z = 8;
-    slist_t slist;
-    slist_new(&slist, print_integer);
-    slist_prepend(&slist, &x);
-    slist_prepend(&slist, &y);
-    slist_prepend(&slist, &z);
-    slist_print(&slist);
-    printf("There are %u items in the list\n", slist_count(&slist));
-    slist_print(&slist);
-    slist_delete_first(&slist);
-    slist_print(&slist);
-    slist_delete_last(&slist);
-    slist_print(&slist);
-
-    exit(0);
-}
