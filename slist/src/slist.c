@@ -15,7 +15,7 @@
  * @param data (i) void pointer to data to store
  * @return node_t*
  */
-node_t* _slist_node_alloc(void *data) {
+static node_t* _slist_node_alloc(void *data) {
     node_t *new = NULL;
     new = malloc(sizeof(*new));
     new->data = data;
@@ -29,7 +29,7 @@ node_t* _slist_node_alloc(void *data) {
  * @param node (i) node to free
  * @return void
  */
-void _slist_node_free(node_t *node) {
+static void _slist_node_free(node_t *node) {
     free(node);
 }
 
