@@ -15,7 +15,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	$(RM) *.o *~ $(TARGET)
+	$(RM) $(OBJS) $(TARGET) *~
 
 .PHONY: depend clean
 
