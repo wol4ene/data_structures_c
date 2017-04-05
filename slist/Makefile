@@ -5,11 +5,12 @@ INCLUDES    = -I./inc
 SRCS	    = $(wildcard src/*.c) \
 	      $(wildcard tst/*.c)
 OBJS	    = $(SRCS:.c=.o)
+LIBS        = -lm
 
 all:    $(TARGET)
 
 $(TARGET): $(OBJS) 
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS) 
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS) $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@

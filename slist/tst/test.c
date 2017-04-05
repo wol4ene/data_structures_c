@@ -1,19 +1,67 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <time.h>
+#include <math.h>
 #include "test.h"
-#include "../inc/slist_ext.h"
+#include "slist_ext.h"
 
+/**
+ * Helper to dump timestamp including ms
+ *
+ * @param buffer (i/o) buffer in which to store timestamp
+ * @return void
+ */
+void 
+print_time_str(void)
+{
+    char buffer[100];
+    int millisec;
+    struct tm* tm_info;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+
+    millisec = lrint(tv.tv_usec/1000.0); // Round to nearest millisec
+    if (millisec>=1000) { // Allow for rounding up to nearest second
+        millisec -=1000;
+        tv.tv_sec++;
+    }
+    tm_info = localtime(&tv.tv_sec);
+
+    /* format final output */
+    strftime(buffer, 26, "%Y:%m:%d %H:%M:%S", tm_info);
+    printf("%s.%03d: ", buffer, millisec);
+}
+
+/**
+ * Helper to print an int
+ * 
+ * @param data (i) incoming int
+ * @return void
+ */
 void print_int(void *data) {
     printf("node: %i\n", *(int*)data);
 }
 
+/**
+ * Convenience macro to save a couple lines of code
+ */
 #define FAIL_TEST do { \
     passed = 0; \
     goto out; \
     } while(0)
 
-
-static inline void print_result(int result, const char* test_name) {
+/**
+ * Helper to print timestamped PASS or FAIL message
+ *
+ * @param result (i) result, 1 if passed, 0 if failed
+ * @param test_name (i) test name to log
+ * @return void
+ */
+static inline void 
+print_result(int result, const char* test_name) {
+    print_time_str();
     if (result) {
 	printf("*** TestID: %s PASSED\n", test_name);
     } else {
@@ -21,7 +69,20 @@ static inline void print_result(int result, const char* test_name) {
     }
 }
 
-static int _slist_verify(ListPtr p, int exp_count, int exp_data, int pos)
+/**
+ * Helper to verify an slist is as expected
+ *
+ * If just testing for an empty list (exp_count == 0), the last
+ * two args, exp_data and pos, will be ignored
+ *
+ * @param p (i) opaque pointer to slist
+ * @param exp_count (i) expected num nodes in slist
+ * @param exp_data  (i) expected data at node 'pos' in list
+ * @param pos       (i) position in list to look at 'exp_data'
+ * @return 1 if as expected, 0 if as not expected
+ */
+static int 
+_slist_verify(ListPtr p, int exp_count, int exp_data, int pos)
 {
     int passed = 1;
     int cur_count = slist_count(p);
@@ -42,7 +103,11 @@ out:
     return passed;
 }
 
-void test1(const char *test_name) {
+/** 
+ * Test1: empty list gets created and gets of nodes return NULL
+ */
+void 
+test1(const char *test_name) {
     int passed = 1;
 
     /* verify empty list gets created */
@@ -52,13 +117,27 @@ void test1(const char *test_name) {
 	FAIL_TEST;
     }
 
+    /* verify attempt to get non existant node returns NULL */
+    if (NULL != slist_get_pos(p, 0)) {
+        printf("expected to get NULL for get_pos, instead found data\n");
+        FAIL_TEST;
+    }
+    if (NULL != slist_get_pos(p, 1)) {
+        printf("expected to get NULL for get_pos, instead found data\n");
+        FAIL_TEST;
+    }
+
     /* cleanup */
     slist_destroy(p);
 out:
     print_result(passed, test_name);
 }
 
-void test2(const char *test_name) {
+/** 
+ * Test2: verify tail-adds functionality
+ */
+void 
+test2(const char *test_name) {
     int passed = 1;
     int data0 = 5, data1 = 6;
 
@@ -82,7 +161,11 @@ out:
     print_result(passed, test_name);
 }
 
-void test3(const char *test_name) {
+/** 
+ * Test3: verify head-adds functionality
+ */
+void 
+test3(const char *test_name) {
     int passed = 1;
     int data0 = 5, data1 = 6;
 
@@ -111,7 +194,11 @@ out:
     print_result(passed, test_name);
 }
 
-void test4(const char *test_name) {
+/** 
+ * Test4: verify permuations of add/del from head/tail
+ */
+void 
+test4(const char *test_name) {
     int passed = 1;
     int data = 5;
 
@@ -165,7 +252,11 @@ out:
     print_result(passed, test_name);
 }
 
-void test5(const char *test_name) {
+/** 
+ * Test5: verify long list of tail-adds in correct order
+ */
+void 
+test5(const char *test_name) {
     int passed = 1;
     int arr[] = {1,2,3,4,5,6,7,8,9};
     int i = 0;
@@ -177,6 +268,7 @@ void test5(const char *test_name) {
     for (i = 0; i < num_nodes; i++) {
 	slist_add_tail(p, &arr[i]);
     }
+
     /* verify each node is in its expected spot */
     for (i = 0; i < num_nodes; i++) {
 	if (1 != _slist_verify(p, 9, arr[i], i)) {
@@ -190,13 +282,91 @@ out:
     print_result(passed, test_name);
 }
 
-#ifdef FALSE
-    slist_apply_fn(p, print_int);
-    
-    int x = *(int*)slist_get_pos(p, 8);
-    printf("Received x=%i\n", x);
+/** 
+ * Test6: verify long list of head-adds in correct order, then reverse and verify
+ */
+void 
+test6(const char *test_name) {
+    int passed = 1;
+    int arr[] = {1,2,3,4,5,6,7,8,9};
+    int i = 0;
+    int num_nodes = sizeof(arr)/sizeof(arr[0]);
+
+    ListPtr p = slist_new(test_name);
+
+    /* head add 9 nodes */
+    for (i = 0; i < num_nodes; i++) {
+	slist_add_head(p, &arr[i]);
+    }
+
+    /* verify each node is in its expected spot
+     * list will be 9,8,7,...,1 due to head add 
+     */
+    for (i = 0; i < num_nodes; i++) {
+	if (1 != _slist_verify(p, 9, arr[num_nodes-1-i], i)) {
+	    FAIL_TEST;
+	}
+    }
+
+    /* reverse the list */
+    slist_reverse(p);
+
+    /* now verify list has been reversed */
+    for (i = 0; i < num_nodes; i++) {
+	if (1 != _slist_verify(p, 9, arr[i], i)) {
+	    FAIL_TEST;
+	}
+    }
+
+    /* cleanup */
     slist_destroy(p);
-#endif 
+out:
+    print_result(passed, test_name);
+}
+
+/**
+ * Helper user by test below to add 2 to a given node in a callback
+ */
+static void
+_slist_test_add_two(void *x)
+{
+   *(int*)x += 2;
+}
+
+
+/** 
+ * Test7: verify the apply_fn gets called for each node in the list
+ */
+void 
+test7(const char *test_name) {
+    int passed = 1;
+    int arr[] = {1,2,3,4,5,6,7,8,9};
+    int orig[] = {1,2,3,4,5,6,7,8,9};
+    int i = 0;
+    int num_nodes = sizeof(arr)/sizeof(arr[0]);
+
+    ListPtr p = slist_new(test_name);
+
+    /* tail add 9 nodes */
+    for (i = 0; i < num_nodes; i++) {
+	slist_add_tail(p, &arr[i]);
+    }
+
+    /* apply a func to add 2 to each node, will modify arr */
+    slist_apply_fn(p, _slist_test_add_two);
+
+    /* now verify each node is +2 of the original */
+    for (i = 0; i < num_nodes; i++) {
+	if (1 != _slist_verify(p, 9, (orig[i]+2), i)) {
+	    FAIL_TEST;
+	}
+    }
+
+    /* cleanup */
+    slist_destroy(p);
+out:
+    print_result(passed, test_name);
+}
 
 test_arr_t Tests[] = 
 {
@@ -204,10 +374,13 @@ test_arr_t Tests[] =
     {"test2", test2},
     {"test3", test3},
     {"test4", test4},
-    {"test5", test5}
+    {"test5", test5},
+    {"test6", test6},
+    {"test7", test7},
 };
 
-int main(int argc, char *argv[])
+int 
+main(int argc, char *argv[])
 {
     int i = 0;
     for (i = 0; i < sizeof(Tests) / sizeof(Tests[0]); i++) {

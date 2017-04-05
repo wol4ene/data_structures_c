@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../inc/slist_ext.h"
-#include "../inc/slist_int.h"
+#include "slist_ext.h"
+#include "slist_int.h"
 
 /************************************
  *    Static Helpers
