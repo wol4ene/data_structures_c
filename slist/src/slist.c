@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "slist_ext.h"
 #include "slist_int.h"
+#include "logger.h"
 
 /************************************
  *    Static Helpers
@@ -15,7 +17,10 @@
  * @param data (i) void pointer to data to store
  * @return node_t*
  */
-static node_t* _slist_node_alloc(void *data) {
+static node_t* 
+_slist_node_alloc(void *data)
+{
+    assert(NULL != data);
     node_t *new = NULL;
     new = malloc(sizeof(*new));
     new->data = data;
@@ -29,7 +34,10 @@ static node_t* _slist_node_alloc(void *data) {
  * @param node (i) node to free
  * @return void
  */
-static void _slist_node_free(node_t *node) {
+static void 
+_slist_node_free(node_t *node)
+{
+    assert(NULL != node);
     free(node);
 }
 
@@ -46,7 +54,11 @@ static void _slist_node_free(node_t *node) {
  * @param name (i) name for list
  * @return ListPtr
  */
-ListPtr slist_new(const char *name) {
+ListPtr 
+slist_new(const char *name)
+{
+    assert(NULL != name);
+
     slist_t *tmp = (slist_t*)malloc(sizeof(slist_t));
     tmp->head = NULL;
     strncpy(tmp->name, name, sizeof(tmp->name));
@@ -58,8 +70,11 @@ ListPtr slist_new(const char *name) {
  *
  * @param listp (i) list to destroy
  */
-void slist_destroy(ListPtr listp)
+void 
+slist_destroy(ListPtr listp)
 {
+    assert(NULL != listp);
+
     node_t *cur = listp->head;
     node_t *next = NULL;
 
@@ -82,7 +97,12 @@ void slist_destroy(ListPtr listp)
  * @param data  (i) data to append
  * @return void
  */
-void slist_add_tail(ListPtr listp, void *data) {
+void 
+slist_add_tail(ListPtr listp, void *data)
+{
+    assert(NULL != listp);
+    assert(NULL != data);
+
     node_t *cur = listp->head;
     node_t *new = NULL;
 
@@ -108,7 +128,12 @@ void slist_add_tail(ListPtr listp, void *data) {
  * @param data  (i) data to prepend
  * @return void
  */
-void slist_add_head(ListPtr listp, void *data) {
+void 
+slist_add_head(ListPtr listp, void *data)
+{
+    assert(NULL != listp);
+    assert(NULL != data);
+
     node_t *cur = listp->head;
     node_t *new = NULL;
 
@@ -125,14 +150,18 @@ void slist_add_head(ListPtr listp, void *data) {
  * @param listp (i) list to delete last node from
  * @return void
  */
-void slist_del_tail(ListPtr listp) {
+void 
+slist_del_tail(ListPtr listp)
+{
+    assert(NULL != listp);
+
     node_t *cur = listp->head;
 
     if (NULL == cur) {
-	printf("Nothing to delete, list empty\n");
+        logger(dbgWarn, "Nothing to delete, list empty");
     }
     else if (NULL == cur->next) {
-	printf("Only 1 item to delete, the head\n");
+        logger(dbgWarn, "Only 1 item to delete, the head");
 	_slist_node_free(cur);
 	listp->head = NULL;
     } else {
@@ -151,11 +180,6 @@ void slist_del_tail(ListPtr listp) {
 	while(NULL != cur->next->next) {
 	    cur = cur->next;
 	}
-	printf("Found second to last node: ");
-	listp->node_print(cur->data);
-	printf("Will delete last node: ");
-	listp->node_print(cur->next->data);
-
 	/* now sitting at next-to-last node */
 	_slist_node_free(cur->next);
 	cur->next = NULL;
@@ -169,13 +193,17 @@ void slist_del_tail(ListPtr listp) {
  * @param listp (i) list to delete first node from
  * @return void
  */
-void slist_del_head(ListPtr listp) {
+void 
+slist_del_head(ListPtr listp)
+{
+    assert(NULL != listp);
+
     node_t *cur = listp->head;
     
     if (NULL == cur) {
-	printf("Nothing to delete, list empty\n");
+        logger(dbgWarn, "Nothing to delete, list empty");
     } else {
-	printf("Delete first node...\n");
+        logger(dbgWarn, "Delete first node");
 	listp->head = cur->next;
 	_slist_node_free(cur);
     }
@@ -187,8 +215,11 @@ void slist_del_head(ListPtr listp) {
  * @param listp (i) list to reverse
  * @return void
  */
-void slist_reverse(ListPtr listp)
+void 
+slist_reverse(ListPtr listp)
 {
+    assert(NULL != listp);
+
     node_t *prev = NULL;
     node_t *next = NULL;
     node_t *cur = listp->head;
@@ -211,7 +242,12 @@ void slist_reverse(ListPtr listp)
  * @param apply_fn (i) fn-ptr to call for each node
  * @return void
  */
-void slist_apply_fn(ListPtr listp, void (*apply_fn)(void *)) {
+void 
+slist_apply_fn(ListPtr listp, void (*apply_fn)(void *))
+{
+    assert(NULL != listp);
+    assert(NULL != apply_fn);
+
     node_t *cur = listp->head;
 
     /* walk all nodes in list */
@@ -230,7 +266,12 @@ void slist_apply_fn(ListPtr listp, void (*apply_fn)(void *)) {
  * @param pos   (i) position from which to get
  * @return data value or NULL if list doesn't contain 'pos' elements
  */
-void *slist_get_pos(ListPtr listp, int pos) {
+void*
+slist_get_pos(ListPtr listp, int pos)
+{
+    assert(NULL != listp);
+    assert(0 <= pos);
+
     void *ret = NULL;
     int cur_pos = 0;
     node_t *cur = listp->head;
@@ -252,8 +293,11 @@ void *slist_get_pos(ListPtr listp, int pos) {
  * @param listp (i) list to count
  * @return count of nodes in list
  */
-int slist_count(ListPtr listp)
+int 
+slist_count(ListPtr listp)
 {
+    assert(NULL != listp);
+
     int cnt = 0;
     node_t *cur = listp->head;
 
@@ -263,15 +307,5 @@ int slist_count(ListPtr listp)
 	cur = cur->next;
     }
     return cnt;
-}
-
-/**
- * API to print an integer
- *
- * @param data (i) void-ptr to integer to print
- * @return void
- */
-void print_integer(void *data) {
-    printf("slist item: %u\n", *(unsigned int*)(data));
 }
 

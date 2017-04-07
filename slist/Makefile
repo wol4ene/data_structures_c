@@ -1,9 +1,10 @@
 TARGET	    = mycc
 CC	    = gcc
 CFLAGS	    = -Wall -g
-INCLUDES    = -I./inc
+INCLUDES    = -I./inc -I../logger/inc
 SRCS	    = $(wildcard src/*.c) \
-	      $(wildcard tst/*.c)
+	      $(wildcard tst/*.c) \
+	      $(wildcard ../logger/src/*.c)
 OBJS	    = $(SRCS:.c=.o)
 LIBS        = -lm
 

@@ -1,55 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
-#include <time.h>
-#include <math.h>
 #include "test.h"
 #include "slist_ext.h"
-
-/**
- * Helper to dump timestamp including ms
- *
- * @param buffer (i/o) buffer in which to store timestamp
- * @return void
- */
-void 
-print_time_str(void)
-{
-    char buffer[100];
-    int millisec;
-    struct tm* tm_info;
-    struct timeval tv;
-
-    gettimeofday(&tv, NULL);
-
-    millisec = lrint(tv.tv_usec/1000.0); // Round to nearest millisec
-    if (millisec>=1000) { // Allow for rounding up to nearest second
-        millisec -=1000;
-        tv.tv_sec++;
-    }
-    tm_info = localtime(&tv.tv_sec);
-
-    /* format final output */
-    strftime(buffer, 26, "%Y:%m:%d %H:%M:%S", tm_info);
-    printf("%s.%03d: ", buffer, millisec);
-}
-
-/**
- * Helper to print an int
- * 
- * @param data (i) incoming int
- * @return void
- */
-void print_int(void *data) {
-    printf("node: %i\n", *(int*)data);
-}
+#include "logger.h"
 
 /**
  * Convenience macro to save a couple lines of code
  */
 #define FAIL_TEST do { \
-    passed = 0; \
-    goto out; \
+        passed = 0; \
+        goto out; \
     } while(0)
 
 /**
@@ -61,11 +21,10 @@ void print_int(void *data) {
  */
 static inline void 
 print_result(int result, const char* test_name) {
-    print_time_str();
     if (result) {
-	printf("*** TestID: %s PASSED\n", test_name);
+        logger(dbgInfo, "*** TestID: %s PASSED", test_name);
     } else {
-	printf("*** TestID: %s FAILED\n", test_name);
+        logger(dbgInfo, "*** TestID: %s FAILED", test_name);
     }
 }
 
@@ -87,14 +46,14 @@ _slist_verify(ListPtr p, int exp_count, int exp_data, int pos)
     int passed = 1;
     int cur_count = slist_count(p);
     if (exp_count != cur_count) {
-	printf("Expected list to have %i members, instead has %i\n", 
+	logger(dbgCrit, "Expected list to have %i members, instead has %i\n", 
 		exp_count, cur_count);
 	FAIL_TEST;
     }
     if (exp_count > 0) {
 	int cur_data = *(int*)slist_get_pos(p, pos);
 	if (exp_data != cur_data) {
-	    printf("Expected node at pos %i to have data = %i, instead has %i\n", 
+	    logger(dbgCrit, "Expected node at pos %i to have data = %i, instead has %i\n", 
 		    pos, exp_data, cur_data);
 	    FAIL_TEST;
 	}
@@ -113,17 +72,17 @@ test1(const char *test_name) {
     /* verify empty list gets created */
     ListPtr p = slist_new(test_name);
     if (0 != slist_count(p)) {
-	printf("expected empty list, list has data\n");
+	logger(dbgCrit, "expected empty list, list has data\n");
 	FAIL_TEST;
     }
 
     /* verify attempt to get non existant node returns NULL */
     if (NULL != slist_get_pos(p, 0)) {
-        printf("expected to get NULL for get_pos, instead found data\n");
+        logger(dbgCrit, "expected to get NULL for get_pos, instead found data\n");
         FAIL_TEST;
     }
     if (NULL != slist_get_pos(p, 1)) {
-        printf("expected to get NULL for get_pos, instead found data\n");
+        logger(dbgCrit, "expected to get NULL for get_pos, instead found data\n");
         FAIL_TEST;
     }
 
@@ -384,7 +343,7 @@ main(int argc, char *argv[])
 {
     int i = 0;
     for (i = 0; i < sizeof(Tests) / sizeof(Tests[0]); i++) {
-	printf("Running %s...\n", Tests[i].test_name);
+	logger(dbgInfo, "Running %s...", Tests[i].test_name);
 	Tests[i].test_fn(Tests[i].test_name);
     }
     return 0;
