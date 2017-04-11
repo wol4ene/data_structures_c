@@ -1,9 +1,8 @@
-TARGET	    = slist_test
+TARGET	    = mycc
 CC	    = gcc
 CFLAGS	    = -Wall -g
-INCLUDES    = -I./inc -I../logger/inc
-SRCS	    = $(wildcard src/*.c) \
-	      $(wildcard tst/*.c) \
+INCLUDES    = -I../logger/inc
+SRCS	    = $(wildcard *.c) \
 	      $(wildcard ../logger/src/*.c)
 OBJS	    = $(SRCS:.c=.o)
 LIBS        = -lm

@@ -6,8 +6,19 @@
 #include "dlist_int.h"
 #include "logger.h"
 
+/************************************
+ *    Static Helpers
+ ************************************/
+/**
+ * Internal API to alloc and init a node
+ *
+ * Note this alloc's memory, need to call _dlist_node_free to free
+ * 
+ * @param data (i) void pointer to data to store
+ * @return node_t*
+ */
 static dnode_t*
-_alloc_dlist_node(void *data)
+_dlist_node_alloc(void *data)
 {
     dnode_t *node = (dnode_t*)malloc(sizeof(dnode_t));
     assert(NULL != node);
@@ -18,14 +29,32 @@ _alloc_dlist_node(void *data)
     return node;
 }
 
+/**
+ * Internal API to free a previously alloc'ed node
+ *
+ * @param node (i) node to free
+ * @return void
+ */
 static void
-_free_dlist_node(dnode_t *node)
+_dlist_node_free(dnode_t *node)
 {
     assert(NULL != node);
     logger(dbgInfo, "Freeing %i", *(int*)node->data);
     free(node);
 }
 
+/************************************
+ *    Public APIs
+ ************************************/
+
+/**
+ * Prepare a new dlist
+ *
+ * Note - allocs mem for a new list, caller must call dlist_destroy()
+ * 
+ * @param name (i) name for list
+ * @return ListPtr
+ */
 DListPtr 
 dlist_new(const char *name)
 {
@@ -35,13 +64,25 @@ dlist_new(const char *name)
 
     strcpy(listp->name, name);
     listp->head = NULL;
+    listp->magic = DLIST_MAGIC_IN_USE;
     return listp;
 }
 
-void dlist_destroy(DListPtr listp)
+/**
+ * Destroy a dlist
+ *
+ * @param listp (i) list to destroy
+ */
+void 
+dlist_destroy(DListPtr listp)
 {
     if (NULL == listp) {
         logger(dbgWarn, "No list provided, nothing to destroy");
+        goto out;
+    }
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to destroy");
+        goto out;
     }
      
     dnode_t *cur = listp->head;
@@ -50,25 +91,40 @@ void dlist_destroy(DListPtr listp)
     /* walk the list, freeing each node */
     while (NULL != cur) {
         next = cur->next; 
-        _free_dlist_node(cur);
+        _dlist_node_free(cur);
         cur = next;
     }
     /* finally, free the dlist itself */
     free(listp);
+out:
+    return;
 }
 
+/**
+ * Append a node to the dlist
+ * 
+ * @param listp (i) list to append to
+ * @param data  (i) data to append
+ * @return void
+ */
 void 
 dlist_add_tail(DListPtr listp, void *data)
 {
     logger(dbgInfo, "Adding tail %i", *(int*)data);
+
     assert(NULL != listp);
     assert(NULL != data);
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
+
     dnode_t *cur = listp->head;
     
     /* alloc a new node */
-    dnode_t *new = _alloc_dlist_node(data);
+    dnode_t *new = _dlist_node_alloc(data);
 
-    /* if no nodes in list, simply add to head */
+    /* if list is empty, simply add to head */
     if (NULL == cur) {
         logger(dbgInfo, "Empty list, adding to head");
         listp->head = new;
@@ -82,17 +138,29 @@ dlist_add_tail(DListPtr listp, void *data)
         new->prev = cur;
         cur->next = new;
     }
+
 }
 
+/**
+ * Prepend a node to the dlist
+ *
+ * @param listp (i) list to prepend to
+ * @param data  (i) data to prepend
+ * @return void
+ */
 void 
 dlist_add_head(DListPtr listp, void *data)
 {
     logger(dbgInfo, "Adding head %i", *(int*)data);
     assert(NULL != listp);
     assert(NULL != data);
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
 
     /* alloc a new node */
-    dnode_t *new = _alloc_dlist_node(data);
+    dnode_t *new = _dlist_node_alloc(data);
 
     /* if list has at least one node, link cur head with new node */
     if (NULL != listp->head) {
@@ -103,18 +171,29 @@ dlist_add_head(DListPtr listp, void *data)
     listp->head = new;
 }
 
+/**
+ * Delete the last node from a dlist
+ *
+ * @param listp (i) list to delete last node from
+ * @return void
+ */
 void 
 dlist_del_tail(DListPtr listp)
 {
     logger(dbgInfo, "Deleting tail");
     assert(NULL != listp);
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
+
     dnode_t *cur = listp->head;
     
     /* if empty, nothing to do */
     if (NULL == cur) {
         logger(dbgWarn, "Empty list, nothing to del");
     } else if (NULL == cur->next) { /* only a single item in list */
-        _free_dlist_node(cur);
+        _dlist_node_free(cur);
         listp->head = NULL;
     } else { /* more than 1 node */
 
@@ -127,35 +206,61 @@ dlist_del_tail(DListPtr listp)
         cur->prev->next = NULL;
 
         /* finally, delete cur node */
-        _free_dlist_node(cur);
+        _dlist_node_free(cur);
     }
 }
 
+/**
+ * Delete the first node from a dlist
+ * 
+ * @param listp (i) list to delete first node from
+ * @return void
+ */
 void 
 dlist_del_head(DListPtr listp)
 {
     logger(dbgInfo, "Deleting head");
     assert(NULL != listp);
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
+
     dnode_t *cur = listp->head;
 
     /* if empty, nothing to do */
     if (NULL == cur) {
         logger(dbgWarn, "Empty list, nothing to del");
     } else if (NULL == cur->next) { /* only a single item in list */
-        _free_dlist_node(cur);
+        _dlist_node_free(cur);
         listp->head = NULL;
     } else { /* more than 1 item */
         listp->head = cur->next;
         listp->head->prev = NULL;
-        _free_dlist_node(cur);
+        _dlist_node_free(cur);
     }
 }
 
+/**
+ * Reverse the list
+ *
+ * @param listp (i) list to reverse
+ * @return void
+ */
 void 
 dlist_reverse(DListPtr listp)
 {
-    assert(NULL != listp);
     logger(dbgInfo, "Reversing");
+    assert(NULL != listp);
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
+    if (NULL == listp->head ||
+        NULL == listp->head->next) {
+        logger(dbgInfo, "0 or 1 elements in list, nothing to reverse");
+        return;
+    }
 
     dnode_t *tmp = NULL;
     dnode_t *cur  = listp->head;
@@ -191,11 +296,23 @@ dlist_reverse(DListPtr listp)
     listp->head = prev;
 #endif
 
+/**
+ * Iterate the list and call apply_fn for each node
+ *
+ * @param listp (i) list to iterate over
+ * @param apply_fn (i) fn-ptr to call for each node
+ * @return void
+ */
 void 
 dlist_apply_fn(DListPtr listp, void (*apply_fn)(void *))
 {
     assert(NULL != listp);
     assert(NULL != apply_fn);
+
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return;
+    }
 
     dnode_t *cur = listp->head;
 
@@ -221,6 +338,11 @@ dlist_get_pos(DListPtr listp, int pos)
     assert(NULL != listp);
     assert(0 <= pos);
 
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return NULL;
+    }
+
     dnode_t *cur = listp->head;
     void *ret = NULL;
     int cur_pos = 0;
@@ -236,10 +358,22 @@ dlist_get_pos(DListPtr listp, int pos)
     return ret;
 }
 
+/**
+ * Return how many nodes are in the list
+*
+* @param listp (i) list to count
+* @reutrn count of nodes in list
+*/
 int 
 dlist_count(DListPtr listp)
 {
     assert(NULL != listp);
+
+    if (DLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no dlist to operate on");
+        return 0;
+    }
+
     dnode_t *cur = listp->head;
     int cnt = 0;
 

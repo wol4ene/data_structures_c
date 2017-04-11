@@ -331,6 +331,34 @@ out:
     print_result(passed, test_name);
 }
 
+/** 
+ * Test8: verify operations don't core on an empty list
+ */
+void 
+test8(const char *test_name) {
+    int passed = 1;
+
+    DListPtr empty_list = dlist_new(test_name);
+
+    /* run operations that might core on an empty list */
+    dlist_del_tail(empty_list);
+    dlist_del_head(empty_list);
+    dlist_reverse(empty_list);
+    dlist_apply_fn(empty_list, _dlist_test_add_two);
+    if (NULL != dlist_get_pos(empty_list, 0)) {
+        FAIL_TEST;
+    }
+    if (0 != dlist_count(empty_list)) {
+        FAIL_TEST;
+    }
+
+    /* cleanup */
+    dlist_destroy(empty_list);
+
+out:
+    print_result(passed, test_name);
+}
+
 test_arr_t Tests[] = 
 {
     {"test1", test1},
@@ -339,7 +367,8 @@ test_arr_t Tests[] =
     {"test4", test4},
     {"test5", test5},
     {"test6", test6},
-    {"test7", test7}
+    {"test7", test7},
+    {"test8", test8}
 };
 
 int

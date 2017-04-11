@@ -59,10 +59,11 @@ slist_new(const char *name)
 {
     assert(NULL != name);
 
-    slist_t *tmp = (slist_t*)malloc(sizeof(slist_t));
-    tmp->head = NULL;
-    strncpy(tmp->name, name, sizeof(tmp->name));
-    return tmp;
+    slist_t *listp = (slist_t*)malloc(sizeof(slist_t));
+    listp->head = NULL;
+    strncpy(listp->name, name, sizeof(listp->name));
+    listp->magic = SLIST_MAGIC_IN_USE;
+    return listp;
 }
 
 /**
@@ -74,6 +75,10 @@ void
 slist_destroy(ListPtr listp)
 {
     assert(NULL != listp);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
 
     node_t *cur = listp->head;
     node_t *next = NULL;
@@ -102,6 +107,10 @@ slist_add_tail(ListPtr listp, void *data)
 {
     assert(NULL != listp);
     assert(NULL != data);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
 
     node_t *cur = listp->head;
     node_t *new = NULL;
@@ -133,6 +142,10 @@ slist_add_head(ListPtr listp, void *data)
 {
     assert(NULL != listp);
     assert(NULL != data);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
 
     node_t *cur = listp->head;
     node_t *new = NULL;
@@ -154,6 +167,10 @@ void
 slist_del_tail(ListPtr listp)
 {
     assert(NULL != listp);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
 
     node_t *cur = listp->head;
 
@@ -197,6 +214,10 @@ void
 slist_del_head(ListPtr listp)
 {
     assert(NULL != listp);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
 
     node_t *cur = listp->head;
     
@@ -219,6 +240,11 @@ void
 slist_reverse(ListPtr listp)
 {
     assert(NULL != listp);
+    if (SLIST_MAGIC_IN_USE != listp->magic) {
+        logger(dbgCrit, "Magic corrupted, no list to destroy");
+        return;
+    } 
+
 
     node_t *prev = NULL;
     node_t *next = NULL;
