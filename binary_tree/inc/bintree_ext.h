@@ -11,6 +11,10 @@ void bintree_insert(BintreePtr bintreep, int data);
 void bintree_remove(BintreePtr bintreep, int data);
 int  bintree_search(BintreePtr bintreep, int data);
 int  bintree_count(BintreePtr bintreep);
+int  bintree_minvalue(BintreePtr bintreep);
+int  bintree_maxvalue(BintreePtr bintreep);
+int  bintree_maxdepth(BintreePtr bintreep);
+int  bintree_hasPathSum(BintreePtr bintreep, int sum);
 
 void bintree_preorder(BintreePtr bintreep);
 void bintree_inorder(BintreePtr bintreep);

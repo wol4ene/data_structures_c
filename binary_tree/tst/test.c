@@ -118,6 +118,8 @@ test3(const char *test_name) {
         logger(dbgErr, "Expected tree to have %i nodes, instead has %i",
                 num_nodes, got_cnt);
         FAIL_TEST;
+    } else {
+        logger(dbgInfo, "Got expected count %i", num_nodes);
     }
 
     /* cleanup */
@@ -219,6 +221,75 @@ out:
     print_result(passed, test_name);
 }
 
+/** 
+ * Test6: create large tree and find min/max, max depth, and hasPathSum
+ */
+void 
+test6(const char *test_name) {
+    int passed = 1;
+
+    int tree_nodes[] = {15, 14, 3, 4, 2, 1, 29, 20, 19, 17, 24, 22, 25, 26, 38, 36, 39};
+    int num_nodes = sizeof(tree_nodes) / sizeof(tree_nodes[0]);
+    int i = 0;
+
+    /* verify empty tree gets created */
+    BintreePtr b = bintree_create(test_name);
+    
+    /* populate tree */
+    for (i = 0; i < num_nodes; i++) {
+        bintree_insert(b, tree_nodes[i]);
+    }
+
+    /* Test for min val == 1 and max_val == 39 */
+    int got_min = bintree_minvalue(b);
+    int got_max = bintree_maxvalue(b);
+    logger(dbgInfo, "Found min=%i, max=%i", got_min, got_max);
+    if (1 != got_min) {
+        logger(dbgErr, "Expected min value 1, instead got: %i", got_min);
+        FAIL_TEST;
+    };
+    if (39 != got_max) {
+        logger(dbgErr, "Expected max value 39, instead got: %i", got_max);
+        FAIL_TEST;
+    };
+
+    /* Test for maxdepth == 6 (path: 15, 29, 20, 24, 25, 26) */
+    int got_depth = bintree_maxdepth(b);
+    logger(dbgInfo, "Found max depth=%i", got_depth);
+    if (6 != got_depth) {
+        logger(dbgErr, "Expected max depth 6, instead got: %i", got_depth);
+        FAIL_TEST;
+    }
+
+    /* Test for path sums 
+     *   sum=36  (path: 15, 14, 3, 4)
+     *   sum=110 (path: 15, 29, 20, 24, 22)
+     *   sum=111 (path does not exist)
+     */
+    int hasSum = 0;
+    hasSum = bintree_hasPathSum(b, 36);
+    if (1 != hasSum) {
+        logger(dbgErr, "Expected pathsum of 36, did not find it");
+        FAIL_TEST;
+    }
+    hasSum = bintree_hasPathSum(b, 110);
+    if (1 != hasSum) {
+        logger(dbgErr, "Expected pathsum of 110, did not find it");
+        FAIL_TEST;
+    }
+    hasSum = bintree_hasPathSum(b, 111);
+    if (0 != hasSum) {
+        logger(dbgErr, "Expected no pathsum of 111, but found it");
+        FAIL_TEST;
+    }
+
+    /* cleanup */
+    bintree_destroy(b);
+    goto out;
+out:
+    print_result(passed, test_name);
+}
+
 test_arr_t Tests[] = 
 {
     {"test1", test1},
@@ -226,6 +297,7 @@ test_arr_t Tests[] =
     {"test3", test3},
     {"test4", test4},
     {"test5", test5},
+    {"test6", test6},
 };
 
 int

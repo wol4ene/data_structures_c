@@ -52,13 +52,14 @@ _bintree_node_free(bintreenode_t *node)
 /**
  * Internal API to destroy a binary tree
  *
- * Destroys in post-order
+ * Algorithm: post-order traversal, then free the node
  * 
  * @param node (i) rot node
  * @return void
  */
 static void
-_bintree_destroy(bintreenode_t *node) {
+_bintree_destroy(bintreenode_t *node)
+{
     if (NULL == node) {
         return;
     }
@@ -74,20 +75,22 @@ _bintree_destroy(bintreenode_t *node) {
 /**
  * Internal helper to add node to tree
  *
+ * Algorithm: Recursively walk left or right subtree, looking for NULL node,
+ *            which is the base case.  Return a new node to the caller,
+ *            which will set new node's parent link to this new node
+ *
  * @param node (i) ptr to current node while traversing tree
  * @param data (i) data to insert
  * @return ptr to a node
  */
 static bintreenode_t*
-_insert_node(bintreenode_t *node, int data) {
-
-    /* base case - hit a leaf, return the new node */
+_insert_node(bintreenode_t *node, int data)
+{
     if (NULL == node) {
         logger(dbgInfo, "Hit leaf node, adding %i", data);
         return _bintree_node_alloc(data);
     }
 
-    /* recursive case - traverse down left or right subtree */
     if (data < node->data) {
         logger(dbgInfo, "Cur node %i, data %i, going left", node->data, data);
         node->left = _insert_node(node->left, data);
@@ -102,6 +105,7 @@ _insert_node(bintreenode_t *node, int data) {
 /**
  * Internal helper to recursively delete a node in a binary tree
  * 
+ * Algorithm: 
  * Search for the node to delete. Do recursively, which will keep track of 'parent'
  * node once we find the node to delete. this will be important later
  *
@@ -158,7 +162,7 @@ _bintree_remove(bintreenode_t *root, int data) {
 /** 
  * Internal API to search a binary tree for a datum
  *
- * Simliar to a lookup, proceed left or right until either
+ * Algorithm: Simliar to a lookup, proceed left or right until either
  * no match is found (hit a NULL on a leaf) or match is found
  *
  * @param node (i) root node
@@ -185,26 +189,27 @@ _bintree_search(bintreenode_t *node, int data) {
 /**
  * Internal API to count tree nodes
  *
- * Could use any traversal method
+ * Algorithm: For each non-null node visited, return 
+ *            1 + count in left subtree + count in right subtree
  *
  * @param node (i) root node
- * @parma cnt  (i) store counter here
- * @return void
+ * @return count of nodes in tree
  */
-static void
-_bintree_count(bintreenode_t *node, int *cnt) {
+static int
+_bintree_count(bintreenode_t *node) {
     if (NULL == node) {
-        return;
+        return 0;
     }
-    (*cnt)++;
-    _bintree_count(node->left, cnt);
-    _bintree_count(node->right, cnt);
+    return (1 + 
+            _bintree_count(node->left) + 
+            _bintree_count(node->right));
 };
 
 /**
  * Internal API to perform preorder traversal
  * 
- *   First visit root, then left tree, then right tree
+ * Algorithm: 
+ *   visit root, then left tree, then right tree
  *
  * @param node (i) root node
  * @return void
@@ -223,7 +228,8 @@ _bintree_preorder(bintreenode_t *node)
 /**
  * Internal API to perform inorder traversal
  * 
- *   First visit left tree, then root, then right tree
+ * Algorithm:
+ *   visit left tree, then root, then right tree
  *
  * @param node (i) root node
  * @return void
@@ -241,7 +247,8 @@ _bintree_inorder(bintreenode_t *node) {
 /**
  * Internal API to perform postorder traversal
  * 
- *   First visit left tree, then right tree, then root
+ * Algorithm:
+ *   visit left tree, then right tree, then root
  *
  * @param node (i) root node
  * @return void
@@ -254,6 +261,51 @@ _bintree_postorder(bintreenode_t *node) {
     _bintree_postorder(node->left);
     _bintree_postorder(node->right);
     logger(dbgInfo, "Postorder: %i, ", node->data);
+}
+
+/**
+ * Helper to find the max depth of a binary tree
+ *
+ * Algorithm: Recur down left and right subtrees, adding one for each
+ *            level we've gone down.  
+ *
+ * @param node (i) root node
+ * @return max-depth
+ */
+static int
+_bintree_maxdepth(bintreenode_t *node)
+{
+    if (NULL == node) {
+        return 0;
+    }
+    
+    int depth_left = _bintree_maxdepth(node->left) + 1;
+    int depth_right = _bintree_maxdepth(node->right) + 1;
+
+    return (depth_left > depth_right ? depth_left : depth_right);
+}
+
+/**
+ * Helper to find if a path exists in the tree that has the given sum
+ *
+ * Algorithm: recur down all paths, and at each node, subtract current
+ *            node's value from sum.  Once we reach a NULL node, if the
+ *            sum has reached zero - return TRUE
+ *
+ * @param node (i) root node
+ * @param sum  (i) sum to search for
+ * @return 1 if sum exists in a path, 0 else
+ */
+static int
+_bintree_hasPathSum(bintreenode_t *node, int sum)
+{
+    if (NULL == node) {
+        return (0 == sum);
+    }
+    int new_sum = sum - node->data;
+    int left_has_sum = _bintree_hasPathSum(node->left, new_sum);
+    int right_has_sum = _bintree_hasPathSum(node->right, new_sum);
+    return (left_has_sum || right_has_sum);
 }
 
 /************************************
@@ -374,10 +426,85 @@ bintree_count(BintreePtr bintreep)
     assert(NULL != bintreep);
     MAGIC_IN_USE_CHECK(bintreep->magic);
 
-    int cnt = 0;
-    _bintree_count(bintreep->root, &cnt);
+    int cnt = _bintree_count(bintreep->root);
 out:
     return cnt;
+}
+
+/**
+ * Find the min-value in a binary tree
+ * 
+ * @param bintreep (i) binary tree
+ * @return minimum value
+ */
+int
+bintree_minvalue(BintreePtr bintreep)
+{
+    assert(NULL != bintreep);
+    MAGIC_IN_USE_CHECK(bintreep->magic);
+
+    bintreenode_t *cur = bintreep->root;
+    while (NULL != cur->left) {
+        cur = cur->left;
+    }
+out:
+    return cur->data;
+}
+
+/**
+ * Find the max-value in a binary tree
+ * 
+ * @param bintreep (i) binary tree
+ * @return maximum value
+ */
+int
+bintree_maxvalue(BintreePtr bintreep)
+{
+    assert(NULL != bintreep);
+    MAGIC_IN_USE_CHECK(bintreep->magic);
+
+    bintreenode_t *cur = bintreep->root;
+    while (NULL != cur->right) {
+        cur = cur->right;
+    }
+out:
+    return cur->data;
+}
+
+
+/**
+ * Find the max-depth of a binary tree
+ *
+ * @param bintreep (i) binary tree
+ * @return max depth
+ */
+int
+bintree_maxdepth(BintreePtr bintreep)
+{
+    assert(NULL != bintreep);
+    MAGIC_IN_USE_CHECK(bintreep->magic);
+
+    int max_depth = _bintree_maxdepth(bintreep->root);
+out:
+    return max_depth;
+}
+
+/**
+ * Check if a given path-sum exists in a tree
+ *
+ * @param bintreep (i) binary tree
+ * @param sum      (i) sum
+ * @return 1 if sum exists for a path, 0 else
+ */
+int
+bintree_hasPathSum(BintreePtr bintreep, int sum)
+{
+    assert(NULL != bintreep);
+    MAGIC_IN_USE_CHECK(bintreep->magic);
+
+    int has_sum = _bintree_hasPathSum(bintreep->root, sum);
+out:
+    return has_sum;
 }
 
 /**
